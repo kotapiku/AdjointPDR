@@ -2,8 +2,8 @@ name: adjoint-pdr
 version: 0.1.0.0
 github: "kotapiku/AdjointPDR"
 license: BSD-3-Clause
-author: "Author name here"
-maintainer: "example@example.com"
+author: "Mayuko Kori"
+maintainer: "ice08235523@gmail.com"
 copyright: "2024 Author name here"
 
 extra-source-files:
@@ -21,6 +21,9 @@ description: Please see the README on GitHub at <https://github.com/kotapiku/Adj
 
 dependencies:
   - base >= 4.7 && < 5
+  - containers
+  - Stack
+  - sbv < 10 # to use sbvExists
 
 ghc-options:
   - -Wall
@@ -28,10 +31,10 @@ ghc-options:
   - -Widentities
   - -Wincomplete-record-updates
   - -Wincomplete-uni-patterns
-  - -Wmissing-export-lists
   - -Wmissing-home-modules
   - -Wpartial-fields
   - -Wredundant-constraints
+  - -Wno-name-shadowing
 
 library:
   source-dirs: src
@@ -47,13 +50,31 @@ executables:
     dependencies:
       - adjoint-pdr
 
-tests:
-  adjoint-pdr-test:
-    main: Spec.hs
-    source-dirs: test
+benchmarks:
+  benchmark-mdp:
+    main: bench/BenchmarkMDP.hs
+    source-dirs: app
+    other-modules: []
     ghc-options:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
     dependencies:
       - adjoint-pdr
+      - tasty-bench
+
+tests:
+  adjoint-pdr-test:
+    main: Tasty.hs
+    source-dirs: test
+    other-modules:
+      - MDPTest
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - adjoint-pdr
+      - tasty
+      - tasty-hunit
+    build-tools: tasty-discover:tasty-discover
