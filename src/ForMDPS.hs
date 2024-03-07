@@ -11,13 +11,14 @@ module ForMDPS (
   fS,
   fS',
   fMCS,
-  hCoMeetMCS,
-  hCoMeetS,
+  hCoMCS,
+  hCoS,
   checkFml,
   convertDelta,
   convertNtoM,
 ) where
 
+import           AdjointPDR
 import           Control.Monad.Zip  (mzip)
 import           Data.IntMap        (IntMap, (!))
 import qualified Data.IntMap        as IM
@@ -27,7 +28,6 @@ import           Data.Maybe         (isNothing)
 import           Data.SBV           hiding (And, partition)
 import           Data.SBV.Internals (CV, CVal (..), cvVal)
 import           ForMDP
-import           AdjointPDR
 
 --
 -- Symbolic
@@ -105,11 +105,11 @@ fMCS :: (Num a, Ord a, Fractional a) => DeltaS a -> ProbMap a -> ProbMap a
 fMCS sd@DeltaS{vars} = fMC (stateNum vars) (convertDeltaMC sd) (isBad sd)
 
 funcSettingMCS :: DeltaS Rational -> Heuristics (ProbMap Rational) Int
-funcSettingMCS sd@DeltaS{vars} = Heuristics {fCandidate = hCa, fDecide = hDe (convertDeltaMC sd) (isBad sd), fConflict = hCoMeetMCS sd}
+funcSettingMCS sd@DeltaS{vars} = Heuristics {fCandidate = hCa, fDecide = hDe (convertDeltaMC sd) (isBad sd), fConflict = hCoMCS sd}
 
-hCoMeetMCS :: DeltaS Rational -> ProbMap Rational -> Int -> Problem (ProbMap Rational) -> Memo (ProbMap Rational) Int -> IO (ProbMap Rational, Memo (ProbMap Rational) Int)
-hCoMeetMCS sd@DeltaS{vars, delta} xi1 ci pb memo = do
-  (ret, _) <- hCoMeetS sd xi1 (memo M.!ci) pb M.empty
+hCoMCS :: DeltaS Rational -> ProbMap Rational -> Int -> Problem (ProbMap Rational) -> Memo (ProbMap Rational) Int -> IO (ProbMap Rational, Memo (ProbMap Rational) Int)
+hCoMCS sd@DeltaS{vars, delta} xi1 yi pb memo = do
+  (ret, _) <- hCoS sd xi1 (memo M.!yi) pb M.empty
   return (ret, memo)
 
 --
@@ -130,9 +130,9 @@ fS' safes sd@DeltaS{vars} = f' safes (convertDelta sd)
 funcSettingS :: DeltaS Rational -> Heuristics (ProbMap Rational) (ProbMap Rational)
 funcSettingS sd@DeltaS{vars} = funcSetting (convertDelta sd) (isBad sd)
 
-hCoMeetS :: DeltaS Rational -> ProbMap Rational -> ProbMap Rational -> Problem (ProbMap Rational) -> Memo (ProbMap Rational) (ProbMap Rational) -> IO (ProbMap Rational, Memo (ProbMap Rational) (ProbMap Rational))
-hCoMeetS sd@DeltaS{vars, delta} xi1 ci Problem{b=h} memo = do
-  let corners = cornerPoints' (getMap $ h xi1) ci
+hCoS :: DeltaS Rational -> ProbMap Rational -> ProbMap Rational -> Problem (ProbMap Rational) -> Memo (ProbMap Rational) (ProbMap Rational) -> IO (ProbMap Rational, Memo (ProbMap Rational) (ProbMap Rational))
+hCoS sd@DeltaS{vars, delta} xi1 yi Problem{b=h} memo = do
+  let corners = cornerPoints' (getMap $ h xi1) yi
   if null corners then
     return (h xi1, memo)
   else do

@@ -28,12 +28,12 @@ deltaGrid (grid_n, grid_m) =
   }
 
 
-grid_nm = (10, 10)
-grid_nms = (32, 32)
+gridNm = (10, 10)
+gridNms = (32, 32)
 gridBenchmark :: [Bench]
 gridBenchmark = [
-  ("Grid", "grid.pm", "0.0012", deltaGrid grid_nm, [0.3, 0.2]),
-  ("Grid", "grid_small.pm", "small", deltaGrid grid_nms, [0.3, 0.2])
+  ("Grid", "grid.pm", "0.0012", deltaGrid gridNm, [0.3, 0.2]),
+  ("Grid", "grid_small.pm", "small", deltaGrid gridNms, [0.3, 0.2])
   ]
 
 --
@@ -72,14 +72,14 @@ deltaZC num_probes =
     bad = Eq (V "e") (C 1)
     }
 
-num_probes_s = 100
-num_probes_m = 10000
-num_probes_g2 = 1000000000
+numProbesS = 100
+numProbesM = 10000
+numProbesG2 = 1000000000
 
 zeroconfBenchmark :: [Bench]
 zeroconfBenchmark = [
-  ("ZeroConf", "zero_conf_small.pm", "0.5", deltaZC num_probes_s, [0.9, 0.75, 0.52, 0.45]),
-  ("ZeroConf", "zero_conf_medium.pm", "0.5", deltaZC num_probes_m, [0.9, 0.75, 0.52, 0.45])
+  ("ZeroConf", "zero_conf_small.pm", "0.5", deltaZC numProbesS, [0.9, 0.75, 0.52, 0.45]),
+  ("ZeroConf", "zero_conf_medium.pm", "0.5", deltaZC numProbesM, [0.9, 0.75, 0.52, 0.45])
   ]
 
 --
@@ -147,13 +147,13 @@ deltaHM n_large p =
     bad = Eq (V "x") (C 0)
   }
 
-n_hm_s = 20
-n_hm_m = 500
+nHmS = 20
+nHmM = 500
 
 haddadMonmegeBenchmark :: [Bench]
 haddadMonmegeBenchmark = [
-  ("HaddadMonmege", "small", "0.7", deltaHM n_hm_s 0.7, [0.9, 0.75]),
-  ("HaddadMonmege", "medium", "0.7", deltaHM n_hm_m 0.7, [0.9, 0.75])
+  ("HaddadMonmege", "small", "0.7", deltaHM nHmS 0.7, [0.9, 0.75]),
+  ("HaddadMonmege", "medium", "0.7", deltaHM nHmM 0.7, [0.9, 0.75])
   ]
 
 {-

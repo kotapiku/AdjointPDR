@@ -43,12 +43,13 @@ data PDRAnswer p n = Valid (PosiChain p) | InValid (NegSeq n) deriving (Show)
 
 type Memo p n = Map.Map n (MemoInfo p n)
 data Problem p = Problem {
-  b       :: p -> p,
+  b        :: p -> p,
   safeElem :: p
 }
-data (CLatPN p n) => Heuristics p n = Heuristics { fCandidate  :: p -> Problem p -> Memo p n -> IO (n, Memo p n),
-                                              fDecide :: p -> n -> Problem p -> Memo p n -> IO (n, Memo p n),
-                                              fConflict :: p -> n -> Problem p -> Memo p n -> IO (p, Memo p n) }
+data (CLatPN p n) => Heuristics p n = Heuristics {
+  fCandidate :: p -> Problem p -> Memo p n -> IO (n, Memo p n),
+  fDecide    :: p -> n -> Problem p -> Memo p n -> IO (n, Memo p n),
+  fConflict  :: p -> n -> Problem p -> Memo p n -> IO (p, Memo p n) }
 
 -- options
 data Options = Options { optPrint :: Verbosity, optMaxStep :: Maybe Int }

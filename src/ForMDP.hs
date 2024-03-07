@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TupleSections         #-}
+{-# LANGUAGE TypeFamilies          #-}
 module ForMDP (
   getMap,
   valueProbMap,
@@ -20,21 +20,21 @@ module ForMDP (
   hCa,
   hDe,
   hCoInitMC,
-  hCoMeet01MC,
-  hCoMeetBMC,
-  hCoMeet01,
-  hCoMeetB,
+  hCo01MC,
+  hCoBMC,
+  hCo01,
+  hCoB,
   DeltaMC,
 ) where
 
+import           AdjointPDR
 import           Data.Bifunctor (first)
 import           Data.IntMap    (IntMap, (!))
 import qualified Data.IntMap    as IM
-import           Data.List      (nub, find, maximumBy)
+import           Data.List      (find, maximumBy, nub)
 import qualified Data.Map       as M
 import           Data.Maybe     (isJust)
 import           Data.Ord       (comparing)
-import           AdjointPDR
 
 -- ProbMap n f = (s |-> f(s), * |-> n)
 data ProbMap a = ProbMap a (IntMap a) deriving (Show, Ord)
@@ -61,35 +61,35 @@ instance (Show a, Fractional a, Ord a) => CLat (ProbMap a) where
 
 -- return value = [(values mapped to 0, Just (s, v)), ...]
 cornerPoints :: ProbMap Rational -> [IntMap Rational]
-cornerPoints (ProbMap n ci_map) = map fromCornerToMap $ hCornerPoints (IM.map (const 0) ci_map) 0 Nothing n ci_map
+cornerPoints (ProbMap n yi_map) = map fromCornerToMap $ hCornerPoints (IM.map (const 0) yi_map) 0 Nothing n yi_map
 
 -- cornerPoints' :: IntMap Rational -> ProbMap Rational -> [([Int], Maybe (Int, Rational))]
 cornerPoints' :: IntMap Rational -> ProbMap Rational -> [IntMap Rational]
-cornerPoints' h_xi1 (ProbMap n ci_map) =
-  map fromCornerToMap $ hCornerPoints h_xi1 (sum (IM.filterWithKey (\k _ -> IM.lookup k h_xi1 /= Just 0) ci_map)) Nothing n ci_map
+cornerPoints' h_xi1 (ProbMap n yi_map) =
+  map fromCornerToMap $ hCornerPoints h_xi1 (sum (IM.filterWithKey (\k _ -> IM.lookup k h_xi1 /= Just 0) yi_map)) Nothing n yi_map
 
 fromCornerToMap :: ([Int], Maybe (Int, Rational)) -> IntMap Rational
 fromCornerToMap (ls, Just (s, v)) = IM.insertWith min s v $ IM.fromListWith min $ map (, 0) ls
 fromCornerToMap (ls, Nothing) = IM.fromListWith min $ map (, 0) ls
 
 
--- pre: sum ci_map >= n
+-- pre: sum yi_map >= n
 hCornerPoints :: IntMap Rational -> Rational -> Maybe (Int, Rational) -> Rational -> IntMap Rational -> [([Int], Maybe (Int, Rational))]
-hCornerPoints f min_value flag n ci_map
-  | null ci_map =
+hCornerPoints f min_value flag n yi_map
+  | null yi_map =
     case flag of
       Just (s, v) -> [([], Just (s, n/v)) | 0 < n && n < v && (f!s * v) <= n]
       Nothing     -> [([], Nothing) | n == 0]
-  | min_value - maybe (maximumSafe $ IM.filterWithKey (\s _ -> not $ states0 s) ci_map) (const 0) flag > n = []
+  | min_value - maybe (maximumSafe $ IM.filterWithKey (\s _ -> not $ states0 s) yi_map) (const 0) flag > n = []
   | otherwise =
-    let ((s, v), ci_map2) = IM.deleteFindMin ci_map in
-    let map_0 = if states0 s && (n <= sum ci_map2 + maybe 0 snd flag)
-          then map (first (s:)) (hCornerPoints f min_value flag n ci_map2) -- s |-> 0
+    let ((s, v), yi_map2) = IM.deleteFindMin yi_map in
+    let map_0 = if states0 s && (n <= sum yi_map2 + maybe 0 snd flag)
+          then map (first (s:)) (hCornerPoints f min_value flag n yi_map2) -- s |-> 0
           else [] in
     let map_01 = if v <= n
-          then map_0 ++ hCornerPoints f (min_value-v) flag (n-v) ci_map2 -- s |-> 1
+          then map_0 ++ hCornerPoints f (min_value-v) flag (n-v) yi_map2 -- s |-> 1
           else map_0 in
-    if isJust flag || not (IM.member s f) then map_01 else map_01 ++ hCornerPoints f (if states0 s then min_value else min_value-v*(1-f!s)) (Just (s, v)) n ci_map2
+    if isJust flag || not (IM.member s f) then map_01 else map_01 ++ hCornerPoints f (if states0 s then min_value else min_value-v*(1-f!s)) (Just (s, v)) n yi_map2
   where
     states0 s = IM.lookup s f == Just 0
 
@@ -113,8 +113,8 @@ fMC stateNum delta bad prob_map1
     map2 = IM.fromList $ filter ((/= 1) . snd) $ map (\s -> (s, g s)) $ filter (not . bad) [0..stateNum-1]
     g s = sum $ IM.mapWithKey (\ns p -> p * valueProbMap ns prob_map1) (delta s)
 
--- X_i = ProbMap n f = (s |-> f(s), * |-> n) in [0, 1]^S
--- C_i = ProbMap n f = {d: S -> [0, 1] | Sigma_s f(s)*d(s) <= n } in ([0, 1]^S)^down
+-- x_i = ProbMap n f = (s |-> f(s), * |-> n) in [0, 1]^S
+-- y_i = ProbMap n f = {d: S -> [0, 1] | Sigma_s f(s)*d(s) <= n } in ([0, 1]^S)^down
 instance (Show a, Ord a, Fractional a) => CLatPN (ProbMap a) Int where
   type MemoInfo (ProbMap a) Int = ProbMap a
   gamma_leq h prob_map1 n memo =
@@ -128,7 +128,7 @@ instance (Show a, Ord a, Fractional a) => CLatPN (ProbMap a) Int where
 
 
 funcSettingMC :: DeltaMC Rational -> (Int -> Bool) -> Heuristics (ProbMap Rational) Int
-funcSettingMC delta bad = Heuristics {fCandidate = hCa, fDecide = hDe delta bad, fConflict = hCoMeetBMC}
+funcSettingMC delta bad = Heuristics {fCandidate = hCa, fDecide = hDe delta bad, fConflict = hCoBMC}
 
 hCa :: (Eq a, Num a) => ProbMap a -> Problem (ProbMap a) -> Memo (ProbMap a) Int -> IO (Int, Memo (ProbMap a) Int)
 hCa _ Problem{safeElem=ProbMap n map} memo  -- {d | d(s0) <= lambda }
@@ -140,27 +140,27 @@ hCa _ Problem{safeElem=ProbMap n map} memo  -- {d | d(s0) <= lambda }
   | otherwise = error "invalid form"
 
 hDe :: (Eq a, Num a) => DeltaMC a -> (Int -> Bool) -> ProbMap a -> Int -> Problem (ProbMap a) -> Memo (ProbMap a) Int -> IO (Int, Memo (ProbMap a) Int)
-hDe delta bad _ ci _ memo
-  | M.member (ci+1) memo = return (ci+1, memo)
+hDe delta bad _ yi _ memo
+  | M.member (yi+1) memo = return (yi+1, memo)
   | otherwise =
-      let (ProbMap n ci_map) = memo M.!ci in
-      let (ci_bad, ci_good) = IM.partitionWithKey (\s _ -> bad s) ci_map in
-      -- ns |-> Sigma_{s: good} ci_map(s)*delta(s, a_s, ns)
-      let nss = concatMap (IM.keys . delta) $ IM.keys ci_good in do
-      let ret_map = IM.fromList $ filter ((/= 0) . snd) $ map (\ns -> (ns, sum $ IM.mapWithKey (\s v -> v * IM.findWithDefault 0 ns (delta s)) ci_good)) $ nub nss
-      return (ci+1, M.insert (ci+1) (ProbMap (n - sum ci_bad) ret_map) memo)
+      let (ProbMap n yi_map) = memo M.!yi in
+      let (yi_bad, yi_good) = IM.partitionWithKey (\s _ -> bad s) yi_map in
+      -- ns |-> Sigma_{s: good} yi_map(s)*delta(s, a_s, ns)
+      let nss = concatMap (IM.keys . delta) $ IM.keys yi_good in do
+      let ret_map = IM.fromList $ filter ((/= 0) . snd) $ map (\ns -> (ns, sum $ IM.mapWithKey (\s v -> v * IM.findWithDefault 0 ns (delta s)) yi_good)) $ nub nss
+      return (yi+1, M.insert (yi+1) (ProbMap (n - sum yi_bad) ret_map) memo)
 
 hCoInitMC :: ProbMap a -> Int -> Problem (ProbMap a) -> Memo (ProbMap a) Int -> IO (ProbMap a, Memo (ProbMap a) Int)
 hCoInitMC xi1 _ Problem{b=h} memo = return (h xi1, memo)
 
-hCoMeet01MC :: ProbMap Rational -> Int -> Problem (ProbMap Rational) -> Memo (ProbMap Rational) Int -> IO (ProbMap Rational, Memo (ProbMap Rational) Int)
-hCoMeet01MC xi1 ci pb memo = do
-  (ret, _) <- hCoMeet01 xi1 (memo M.!ci) pb M.empty
+hCo01MC :: ProbMap Rational -> Int -> Problem (ProbMap Rational) -> Memo (ProbMap Rational) Int -> IO (ProbMap Rational, Memo (ProbMap Rational) Int)
+hCo01MC xi1 yi pb memo = do
+  (ret, _) <- hCo01 xi1 (memo M.!yi) pb M.empty
   return (ret, memo)
 
-hCoMeetBMC :: ProbMap Rational -> Int -> Problem (ProbMap Rational) -> Memo (ProbMap Rational) Int -> IO (ProbMap Rational, Memo (ProbMap Rational) Int)
-hCoMeetBMC xi1 ci pb memo = do
-  (ret, _) <- hCoMeetB xi1 (memo M.!ci) pb M.empty
+hCoBMC :: ProbMap Rational -> Int -> Problem (ProbMap Rational) -> Memo (ProbMap Rational) Int -> IO (ProbMap Rational, Memo (ProbMap Rational) Int)
+hCoBMC xi1 yi pb memo = do
+  (ret, _) <- hCoB xi1 (memo M.!yi) pb M.empty
   return (ret, memo)
 
 
@@ -189,34 +189,34 @@ instance (Show a, Ord a, Fractional a) => CLatPN (ProbMap a) (ProbMap a) where
   gamma_leq h prob_map1 (ProbMap lambda map2) _ = sum (IM.mapWithKey (\k v -> valueProbMap k (h prob_map1) * v) map2) <= lambda
 
 funcSetting :: Delta Rational -> (Int -> Bool) -> Heuristics (ProbMap Rational) (ProbMap Rational)
-funcSetting delta bad = Heuristics {fCandidate = hCa, fDecide = hDe, fConflict = hCoMeetB}
+funcSetting delta bad = Heuristics {fCandidate = hCa, fDecide = hDe, fConflict = hCoB}
   where
     hCa _ Problem{safeElem=ProbMap n map} memo  -- {d | d(s0) <= lambda }
       | n == 1 && IM.size map == 1 =
         let (s0, lambda) = IM.findMin map in return (ProbMap lambda $ IM.singleton s0 1, memo)
       | otherwise = error "invalid form"
-    hDe xi1 ci@(ProbMap n ci_map) _ memo =
-      case M.lookup ci memo >>= find (\(ProbMap n' ci1_map) -> (sum . IM.mapWithKey (\ns p -> p * valueProbMap ns xi1)) ci1_map > n') of
-        Just ci1 -> return (ci1, memo)
+    hDe xi1 yi@(ProbMap n yi_map) _ memo =
+      case M.lookup yi memo >>= find (\(ProbMap n' yi1_map) -> (sum . IM.mapWithKey (\ns p -> p * valueProbMap ns xi1)) yi1_map > n') of
+        Just yi1 -> return (yi1, memo)
         _ -> do
-          let (ci_bad, ci_good) = IM.partitionWithKey (\s _ -> bad s) ci_map
-          let ci_good' = IM.filterWithKey (\s _ -> not $ null (delta s)) ci_good
+          let (yi_bad, yi_good) = IM.partitionWithKey (\s _ -> bad s) yi_map
+          let yi_good' = IM.filterWithKey (\s _ -> not $ null (delta s)) yi_good
           -- s |-> a_s
-          let a_map = IM.mapWithKey (\s _ -> fst $ maximumBy (comparing snd) $ zip [0..] $ map (sum . IM.mapWithKey (\ns p -> p * valueProbMap ns xi1)) (delta s)) ci_good'
-          -- ns |-> Sigma_{s: good} ci_map(s)*delta(s, a_s, ns)
-          let nss = concatMap (\s -> IM.keys $ delta s!!(a_map!s)) $ IM.keys ci_good'
-          let ret_map = foldl (\current ns -> IM.insert ns (sum $ IM.mapWithKey (\s v -> v * IM.findWithDefault 0 ns (delta s!!(a_map!s))) ci_good') current) IM.empty $ nub nss
-          let ci1 = ProbMap (n - sum ci_bad) $ IM.filter (/= 0) ret_map
-          return (ci1, M.insertWith (++) ci [ci1] memo)
+          let a_map = IM.mapWithKey (\s _ -> fst $ maximumBy (comparing snd) $ zip [0..] $ map (sum . IM.mapWithKey (\ns p -> p * valueProbMap ns xi1)) (delta s)) yi_good'
+          -- ns |-> Sigma_{s: good} yi_map(s)*delta(s, a_s, ns)
+          let nss = concatMap (\s -> IM.keys $ delta s!!(a_map!s)) $ IM.keys yi_good'
+          let ret_map = foldl (\current ns -> IM.insert ns (sum $ IM.mapWithKey (\s v -> v * IM.findWithDefault 0 ns (delta s!!(a_map!s))) yi_good') current) IM.empty $ nub nss
+          let yi1 = ProbMap (n - sum yi_bad) $ IM.filter (/= 0) ret_map
+          return (yi1, M.insertWith (++) yi [yi1] memo)
 
-hCoMeetB :: ProbMap Rational -> ProbMap Rational -> Problem (ProbMap Rational) -> Memo (ProbMap Rational) (ProbMap Rational) -> IO (ProbMap Rational, Memo (ProbMap Rational) (ProbMap Rational))
-hCoMeetB xi1 ci Problem{b=h} memo =
-  let corners = cornerPoints' (getMap $ h xi1) ci in
+hCoB :: ProbMap Rational -> ProbMap Rational -> Problem (ProbMap Rational) -> Memo (ProbMap Rational) (ProbMap Rational) -> IO (ProbMap Rational, Memo (ProbMap Rational) (ProbMap Rational))
+hCoB xi1 yi Problem{b=h} memo =
+  let corners = cornerPoints' (getMap $ h xi1) yi in
   return (ProbMap 1 $ IM.union (IM.unionsWith min corners) (getMap $ h xi1), memo)
 
-hCoMeet01 :: ProbMap Rational -> ProbMap Rational -> Problem (ProbMap Rational) -> Memo (ProbMap Rational) (ProbMap Rational) -> IO (ProbMap Rational, Memo (ProbMap Rational) (ProbMap Rational))
-hCoMeet01 xi1 ci Problem{b=h} memo = do
-  let corners = cornerPoints' (getMap $ h xi1) ci
+hCo01 :: ProbMap Rational -> ProbMap Rational -> Problem (ProbMap Rational) -> Memo (ProbMap Rational) (ProbMap Rational) -> IO (ProbMap Rational, Memo (ProbMap Rational) (ProbMap Rational))
+hCo01 xi1 yi Problem{b=h} memo = do
+  let corners = cornerPoints' (getMap $ h xi1) yi
   if null corners then
     return (h xi1, memo)
   else do
