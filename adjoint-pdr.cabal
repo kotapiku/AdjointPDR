@@ -11,7 +11,7 @@ homepage:       https://github.com/kotapiku/AdjointPDR#readme
 bug-reports:    https://github.com/kotapiku/AdjointPDR/issues
 author:         Mayuko Kori
 maintainer:     ice08235523@gmail.com
-copyright:      2024 Author name here
+copyright:      2024 Mayuko Kori
 license:        BSD-3-Clause
 license-file:   LICENSE
 build-type:     Simple

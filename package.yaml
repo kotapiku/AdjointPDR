@@ -4,7 +4,7 @@ github: "kotapiku/AdjointPDR"
 license: BSD-3-Clause
 author: "Mayuko Kori"
 maintainer: "ice08235523@gmail.com"
-copyright: "2024 Author name here"
+copyright: "2024 Mayuko Kori"
 
 extra-source-files:
   - README.md
