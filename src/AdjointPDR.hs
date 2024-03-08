@@ -34,7 +34,7 @@ class (Show a) => CLat a where
 
 class (CLat p, Show n) => CLatPN p n where -- p = L, n = C
   type MemoInfo p n
-  gamma_leq :: (p -> p) -> p -> n -> Memo p n -> Bool -- gamma (b p) <=^? n
+  gamma_leq :: (p -> p) -> p -> n -> Memo p n -> Bool -- gamma_leq b p n memo = (gamma (b p) <=^? n)
 
 type PosiChain p = [p]         -- [x_{n-1}, ..., x_0=bot]
 type NegSeq n = Stack n -- Stack (n-i) [y_i, ..., y_{n-1}]
@@ -69,7 +69,8 @@ printRuleWith opts rule (PN (posi_chain, neg_seq)) =
     _ -> return ()
 
 -- check whether mu b <= p in L
--- assume gamma's order-embeddingness and forward completeness
+-- assume order-embeddingness: a <= b in L iff gamma a <= gamma b in C
+--        forward completeness: \ol{b} gamma = gamma b
 adjointPDR :: forall p n. CLatPN p n => Options -> Heuristics p n -> Problem p -> IO (PDRAnswer p n)
 adjointPDR opts func_s pb@Problem{b, safeElem=p} =
   let initSeq = PN ([top p, bot p], stackNew) in
