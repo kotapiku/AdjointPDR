@@ -35,6 +35,7 @@ ghc-options:
   - -Wpartial-fields
   - -Wredundant-constraints
   - -Wno-name-shadowing
+  - -Wno-missing-signatures
 
 library:
   source-dirs: src
@@ -48,6 +49,7 @@ benchmarks:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
+      - -Wno-incomplete-patterns
     dependencies:
       - adjoint-pdr
       - tasty-bench

@@ -147,7 +147,7 @@ hDe delta bad _ yi _ memo
       let (yi_bad, yi_good) = IM.partitionWithKey (\s _ -> bad s) yi_map in
       -- ns |-> Sigma_{s: good} yi_map(s)*delta(s, a_s, ns)
       let nss = concatMap (IM.keys . delta) $ IM.keys yi_good in do
-      let ret_map = IM.fromList $ filter ((/= 0) . snd) $ map (\ns -> (ns, sum $ IM.mapWithKey (\s v -> v * IM.findWithDefault 0 ns (delta s)) yi_good)) $ nub nss
+      let ret_map = IM.fromListWith (+) $ filter ((/= 0) . snd) $ map (\ns -> (ns, sum $ IM.mapWithKey (\s v -> v * IM.findWithDefault 0 ns (delta s)) yi_good)) $ nub nss
       return (yi+1, M.insert (yi+1) (ProbMap (n - sum yi_bad) ret_map) memo)
 
 hCoInitMC :: ProbMap a -> Int -> Problem (ProbMap a) -> Memo (ProbMap a) Int -> IO (ProbMap a, Memo (ProbMap a) Int)

@@ -15,7 +15,9 @@ module ForMDPS (
   hCoS,
   checkFml,
   convertDelta,
+  convertDeltaMC,
   convertNtoM,
+  isBad,
 ) where
 
 import           AdjointPDR
@@ -85,7 +87,7 @@ stateNum :: Vars -> Int
 stateNum = foldl (\current (_, (min, max), _) -> current*(max-min+1)) 1
 
 initialN :: DeltaS a -> Int
-initialN DeltaS{vars} = convertMtoN vars $ M.fromList $ map h vars
+initialN DeltaS{vars} = convertMtoN vars $ M.fromListWith (+) $ map h vars
   where
     h (v, (min, max), n) = if n < min || max < n then error "invalid initial value" else (v, n)
 
@@ -99,7 +101,7 @@ isBad DeltaS{vars, bad} s = checkFml (convertNtoM vars s) bad
 convertDeltaMC :: Num a => DeltaS a -> DeltaMC a
 convertDeltaMC DeltaS{vars, delta} n =
   let m = convertNtoM vars n in
-    IM.fromList $ maybe [(n, 1)] (map (\(r, nexts) -> (convertMtoN vars (foldl (\current (s, fml) -> M.insert s (evalFml m fml) current) m nexts), r)) . snd) $ find (\(fml, _) -> checkFml m fml) delta
+    IM.fromListWith (+) $ maybe [(n, 1)] (map (\(r, nexts) -> (convertMtoN vars (foldl (\current (s, fml) -> M.insert s (evalFml m fml) current) m nexts), r)) . snd) $ find (\(fml, _) -> checkFml m fml) delta
 
 fMCS :: (Num a, Ord a, Fractional a) => DeltaS a -> ProbMap a -> ProbMap a
 fMCS sd@DeltaS{vars} = fMC (stateNum vars) (convertDeltaMC sd) (isBad sd)
@@ -119,7 +121,7 @@ hCoMCS sd@DeltaS{vars, delta} xi1 yi pb memo = do
 convertDelta :: Num a => DeltaS a -> Delta a
 convertDelta DeltaS{vars, delta} n =
   let m = convertNtoM vars n in
-    map (IM.fromList . map (\(r, nexts) -> (convertMtoN vars (foldl (\current (s, fml) -> M.insert s (evalFml m fml) current) m nexts), r)) . snd) $ filter (\(fml, _) -> checkFml m fml) delta
+    map (IM.fromListWith (+) . map (\(r, nexts) -> (convertMtoN vars (foldl (\current (s, fml) -> M.insert s (evalFml m fml) current) m nexts), r)) . snd) $ filter (\(fml, _) -> checkFml m fml) delta
 
 fS :: (Num a, Ord a, Fractional a) => DeltaS a -> ProbMap a -> ProbMap a
 fS sd@DeltaS{vars} = f (stateNum vars) (convertDelta sd) (isBad sd)
@@ -141,7 +143,7 @@ hCoS sd@DeltaS{vars, delta} xi1 yi Problem{b=h} memo = do
     let vs = filter (`IM.notMember` current) safe -- solve problem of these variables
     let (zs, d') = mapAccumL (\ls ((fml, nexts), i) -> let (ls1, ls2) = partition (\n -> checkFml (convertNtoM vars n) fml) ls in (ls2, (ls1, nexts, i))) safe $ zip delta [0..]
 
-    let current_xi1 = IM.union current $ IM.fromList $ map (\s -> (s, valueProbMap s xi1)) vs
+    let current_xi1 = IM.union current $ IM.fromListWith (+) $ map (\s -> (s, valueProbMap s xi1)) vs
     if leq (h xi1) (ProbMap 1 current_xi1)
       then return (ProbMap 1 current_xi1, memo) -- to get valid earlier
       else do
@@ -168,7 +170,7 @@ hCoS sd@DeltaS{vars, delta} xi1 yi Problem{b=h} memo = do
         if modelExists result
           then do
             let m = getModelDictionary result
-            let ret2 = ProbMap 1 $ IM.filter (/=1) $ IM.union current $ IM.fromList $ map (, 0) zs ++ concatMap (\(ls, _, i) -> map (\n -> (n, max (valueProbMap n xi1) $ fromCVtoRational (m M.!("a" ++ show i))*toRational n+fromCVtoRational (m M.!("b" ++ show i)))) ls) d'
+            let ret2 = ProbMap 1 $ IM.filter (/=1) $ IM.union current $ IM.fromListWith (+) $ map (, 0) zs ++ concatMap (\(ls, _, i) -> map (\n -> (n, max (valueProbMap n xi1) $ fromCVtoRational (m M.!("a" ++ show i))*toRational n+fromCVtoRational (m M.!("b" ++ show i)))) ls) d'
             if leq (h xi1) ret2
               then return (ret2, memo)
               else return (ret1, memo)

@@ -19,6 +19,7 @@ type Bench = (String, String, String, DeltaS Rational, [Rational])
 --
 -- grid.pm
 --
+
 deltaGrid :: Fractional a => (Int, Int) -> DeltaS a
 deltaGrid (grid_n, grid_m) =
   DeltaS {
@@ -74,7 +75,6 @@ deltaZC num_probes =
 
 numProbesS = 100
 numProbesM = 10000
-numProbesG2 = 1000000000
 
 zeroconfBenchmark :: [Bench]
 zeroconfBenchmark = [
@@ -95,8 +95,8 @@ deltaC nc p =
   }
 
 (n_cs, p_cs) = (500, 0.001) -- for chain_small.pm
-(n_cm, p_cm) = (5000, 0.0001) -- for chain_medium.pm
-(n_cg, p_cg) = (50000000*10000, 0.000000000001) -- for chain_gigantic.pm
+-- (n_cm, p_cm) = (5000, 0.0001) -- for chain_medium.pm
+-- (n_cg, p_cg) = (50000000*10000, 0.000000000001) -- for chain_gigantic.pm
 
 chainBenchmark :: [Bench]
 chainBenchmark = [
@@ -121,8 +121,8 @@ deltaDC nd p =
   }
 
 (n_ds, p_ds) = (250, 0.001) -- for double_chain_small.pm
-(n_dm, p_dm) = (2500, 0.0001) -- for double_chain_medium.pm
-(n_dg, p_dg) = (2500000, 0.0000000001) -- for double_chain_gigantic.pm
+-- (n_dm, p_dm) = (2500, 0.0001) -- for double_chain_medium.pm
+-- (n_dg, p_dg) = (2500000, 0.0000000001) -- for double_chain_gigantic.pm
 
 doubleChainBenchmark :: [Bench]
 doubleChainBenchmark = [
@@ -311,22 +311,3 @@ ijBenchmark :: [Bench]
 ijBenchmark = [
   ("ij", "small", "1", deltaIJ, [1.0, 0.5])
   ]
-
--- --
--- -- consensus.2.v1.pm from https://qcomp.org/benchmarks/#consensus
--- --
-
--- deltaCS :: Fractional a => Int -> DeltaS a
--- deltaCS k =
---   DeltaS {
---     vars = [("pc1", (0, 3), 1), ("q2", (0, 1), 1), ("q3", (0, 1), 1)],
---     delta = [
---       (Eq (V "q1") (C 1), [(0.5, [("q1", C 0), ("q3", C 1)]), (0.5, [("q1", C 0), ("q2", C 1)])])
---     ],
---     bad = Eq (Add [V "q1", V "q2", V "q3"]) (C 1)
---   }
-
--- ijBenchmark :: [Bench]
--- ijBenchmark = [
---   ("ij", "small", "1", deltaIJ, [1.0, 0.5]),
---   ]
