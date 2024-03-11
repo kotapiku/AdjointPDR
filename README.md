@@ -13,3 +13,19 @@ Before running, you need to install z3.
 
 - ghc 9.4.8
 - cabal 3.10.2
+
+## Docker
+
+We provide a Dockerfile to simplify the management of dependecies.
+To build the image, just run
+```sh
+docker build -t adjoint-pdr .
+```
+Then, to execute the benchmarks, just run a container from that image:
+```sh
+docker run -it adjoint-pdr
+```
+To open an interactive shell inside the container, run
+```sh
+docker run -it adjoint-pdr /bin/sh
+```
